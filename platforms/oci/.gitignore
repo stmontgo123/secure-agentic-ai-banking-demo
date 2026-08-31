@@ -1,0 +1,33 @@
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+
+# Oracle wallets / keys / certificates
+wallet/
+Wallet_*.zip
+*.pem
+*.p12
+*.sso
+*.key
+*.jks
+*.crt
+*.cer
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local runtime / logs
+*.log
+logs/
+output/
+.DS_Store
+.vscode/
+.idea/
+
+# Packaging
+*.zip

@@ -1,144 +1,156 @@
-# Secure Agentic AI Banking Demo
+# Secure Agentic AI Banking Platform
 
-**A public-safe enterprise AI proof of concept showing how agentic AI can increase employee capacity without removing human accountability.**
+A multicloud enterprise AI reference architecture demonstrating secure agentic AI, Retrieval-Augmented Generation (RAG), deterministic authorization, human-in-the-loop controls, vector search, and auditability.
 
-This project uses a synthetic declined-card scenario to demonstrate **Oracle AI Database vector search, Retrieval-Augmented Generation (RAG), Python orchestration, a local Large Language Model (LLM), role-aware authorization, human approval, and auditability**.
+## Choose Your Platform
 
-> **Portfolio note:** This repository contains fictional banking data and a sanitized reference implementation. It contains no real customer data, production credentials, Oracle wallet files, or employer/client source material.
+### Oracle Cloud Infrastructure (OCI)
 
-![Agentic AI card-decline workflow](architecture/agentic-ai-card-decline-workflow.png)
+[View the OCI implementation](platforms/oci/README.md)
 
-## The scenario
+- Oracle AI Database
+- Oracle Vector Search
+- Oracle Cloud Infrastructure (OCI)
+- Python orchestration
+- Local Large Language Model (LLM)
+- Role-aware Retrieval-Augmented Generation (RAG)
+- Human-in-the-loop approval
+- Auditable AI workflow
 
-A customer calls because a **$1,250 purchase is declined**. Instead of forcing a service representative to manually navigate transaction, account, fraud, and policy systems, the agent:
+### Amazon Web Services (AWS)
 
-1. retrieves transaction and account facts;
-2. retrieves only fraud fields allowed for the employee role;
-3. performs role-filtered semantic retrieval over approved policy;
-4. asks a local LLM to synthesize a grounded explanation and next step;
-5. creates a **PENDING** action request; and
-6. requires an explicit human decision before the workflow is complete.
+[View the AWS implementation](platforms/aws/README.md)
 
-Every material stage is recorded in Oracle for auditability.
+- Amazon Bedrock
+- Amazon Nova
+- Amazon Titan Text Embeddings
+- Amazon Aurora PostgreSQL / Amazon RDS for PostgreSQL
+- pgvector
+- AWS Identity and Access Management (IAM)
+- AWS Secrets Manager
+- Python orchestration
+- Retrieval-Augmented Generation (RAG)
+- Human-in-the-loop approval
+- Auditable AI workflow
 
-## Why this demo is different from a basic RAG chatbot
+## Common Security Model
 
-The LLM is **not the authorization layer**.
+Both implementations preserve the same security model:
 
 ```text
-Employee role
-    -> deterministic authorization
-    -> permitted data and policy retrieval
-    -> minimum context
-    -> LLM reasoning
-    -> PENDING action
-    -> human approval / rejection
-    -> audit
+Employee Identity / Role
+        |
+        v
+Deterministic Authorization
+        |
+        v
+Permitted Data + Policy Retrieval
+        |
+        v
+Minimum Authorized Context
+        |
+        v
+Large Language Model
+        |
+        v
+Recommended Action
+        |
+        v
+PENDING Human Approval
+        |
+        v
+APPROVED / REJECTED
+        |
+        v
+Audit Trail
 ```
 
-For the `CUSTOMER_SERVICE` role, restricted fraud fields such as `fraud_score` and `internal_notes` are never returned by the tool. Restricted policy rows are filtered before vector similarity results are returned. The model cannot disclose information it never receives.
+The Large Language Model is not the authorization layer.
 
-## Architecture
+Restricted information is removed before model reasoning, consequential actions remain subject to human approval, and material AI and human decisions are auditable.
 
-```mermaid
-flowchart TD
-    U[Employee] --> A[Python Agent]
-    A --> S[Structured SQL Evidence]
-    A --> F[Role-scoped Fraud Evidence]
-    A --> V[Authorized Oracle VECTOR RAG]
-    S --> C[Minimum Context]
-    F --> C
-    V --> C
-    C --> L[Ollama + Qwen2.5 3B]
-    L --> R[Grounded Recommendation]
-    R --> P[ACTION_REQUEST: PENDING]
-    P --> H{Human Decision}
-    H -->|Approve| X[APPROVED]
-    H -->|Reject| Y[REJECTED]
-    A --> Z[AI_AUDIT_LOG]
-    H --> Z
+## Multicloud Design
+
+```text
+                Secure Agentic AI Banking
+                         |
+             +-----------+-----------+
+             |                       |
+             v                       v
+      OCI Implementation       AWS Implementation
+
+      Oracle AI Database       Aurora PostgreSQL
+      Oracle Vector Search     pgvector
+      OCI                      AWS
+      Local / OCI models       Amazon Bedrock
+                               Nova + Titan
 ```
 
-## Technology
+The cloud implementation can change without changing the enterprise governance model.
 
-| Area | Implementation |
-|---|---|
-| Relational + vector data | Oracle AI Database |
-| Vector type | `VECTOR(768, FLOAT32)` |
-| Semantic similarity | `VECTOR_DISTANCE(..., COSINE)` |
-| Embeddings | `nomic-embed-text` |
-| Generation | `qwen2.5:3b` via Ollama |
-| Orchestration | Python |
-| Authorization | deterministic SQL/tool filtering before LLM context |
-| Human control | separate `PENDING -> APPROVED/REJECTED` review step |
-| Audit | `AI_AUDIT_LOG` in Oracle |
+> **AI governance should survive a change in cloud provider.**
 
-## Quick start
+## Common Business Scenario
 
-See [`docs/PUBLIC_BUILD_RUNBOOK.md`](docs/PUBLIC_BUILD_RUNBOOK.md) for setup.
+A customer calls because a **$1,250 card purchase has been declined**.
 
-For a configured environment:
+The AI agent:
 
-```bash
-source .venv/bin/activate
+1. retrieves deterministic transaction and account facts;
+2. retrieves only fraud information authorized for the employee role;
+3. performs role-filtered semantic policy retrieval;
+4. supplies only approved context to the Large Language Model;
+5. generates a grounded recommendation;
+6. creates a `PENDING` action request;
+7. requires explicit human approval or rejection; and
+8. records material AI and human activity for auditability.
 
-# Python reads local secrets from .env through python-dotenv.
-# Do not commit .env.
-python src/test_ollama.py
-python src/test_db.py
-python src/embed_policies.py
-./scripts/reset_demo.sh
-python src/bank_agent.py 847291
-python src/review_action.py
-```
-
-## What a successful run proves
-
-- structured SQL retrieval for deterministic facts
-- embeddings and semantic vector search for policy
-- Retrieval-Augmented Generation (RAG)
-- explicit multi-step agent orchestration
-- role-aware least-privilege context
-- data minimization before LLM reasoning
-- grounded recommendation generation
-- human-in-the-loop approval
-- independent audit events for AI and human decisions
-- model portability: the governance design does not depend on one LLM provider
-
-## Start here by audience
-
-**Executive / hiring manager:** README -> workflow image -> `docs/supporting/Agentic_AI_Banking_Demo_Plain_Language_Deck.pptx`
-
-**Enterprise architect:** `docs/Banking_Agent_Master_Guide.md` -> `SECURITY.md` -> decision-rationale guide
-
-**Engineer:** `docs/PUBLIC_BUILD_RUNBOOK.md` -> `src/` -> `sql/` -> `scripts/reset_demo.sh`
-
-**Interviewer:** `demo/demo-script.md` and `demo/interview-qa.md`
-
-## Repository structure
+## Repository Structure
 
 ```text
 secure-agentic-ai-banking-demo/
+|
 ├── README.md
-├── SECURITY.md
-├── LICENSE
-├── .gitignore
-├── .env.example
-├── requirements.txt
-├── src/
-├── sql/
-├── scripts/
-├── demo/
-├── architecture/
-└── docs/
+|
+└── platforms/
+    |
+    ├── oci/
+    |   ├── README.md
+    |   ├── src/
+    |   ├── sql/
+    |   ├── scripts/
+    |   ├── architecture/
+    |   ├── demo/
+    |   └── docs/
+    |
+    └── aws/
+        ├── README.md
+        ├── src/
+        ├── sql/
+        ├── scripts/
+        ├── infra/
+        └── docs/
 ```
 
-## Production boundary
+## What This Portfolio Demonstrates
 
-This is a proof of concept, not a claim of production banking readiness. A production implementation would strengthen identity, private networking, secrets management, high availability, disaster recovery, model governance, observability/SIEM, authenticated action APIs, formal AI evaluation, adversarial testing, compliance controls, and change management.
+- Enterprise Agentic AI architecture
+- Generative Artificial Intelligence (GenAI)
+- Retrieval-Augmented Generation (RAG)
+- Vector search and embeddings
+- Multicloud architecture
+- Least-privilege model context
+- Deterministic authorization before AI reasoning
+- Human-in-the-loop controls
+- AI governance and auditability
+- Vendor-independent architecture design
 
-See [`SECURITY.md`](SECURITY.md) and the Master Guide for the productionization roadmap.
+## Design Philosophy
 
-## License
+This project is not simply about making a Large Language Model answer a banking question.
 
-MIT. See [`LICENSE`](LICENSE).
+It demonstrates how an enterprise can introduce AI without surrendering security boundaries, authorization controls, operational accountability, or human decision authority.
+
+The cloud services may change.
+
+**The governance model should not.**
